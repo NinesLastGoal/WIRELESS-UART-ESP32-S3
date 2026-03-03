@@ -1,73 +1,90 @@
-Currently only the uart and wireless functions have been tested i havent finished the other features in their entirity and the logic analyzer is literally a placeholder lol. Uart works great though! I developed this to unfuck all those Chinese IOT devices so they can easily be reversed engineered. 
+# ◉ ESP32-S3 UART Probe
 
+Built to tackle the endless parade of locked-down IoT devices flooding the market. This one runs on an ESP32-S3-WROOM-1 and lets you tap into UART ports wirelessly—full terminal access, signal capture, and some useful reverse engineering tools bundled in.
 
+**Status:** UART and WiFi are solid. Brute-force and boot capture work. Logic analyzer is still under construction—don't rely on it yet.
 
+## Hardware Specs
 
+| Component | Details |
+|-----------|---------|
+| **Chip** | ESP32-S3 (QFN56) rev v0.2 — Dual-core @ 240 MHz |
+| **Flash** | 16 MB |
+| **PSRAM** | 8 MB Octal (used for capture ring buffer) |
+| **WiFi** | 2.4 GHz 802.11 b/g/n |
+| **USB Bridge** | CH343 (programming & debug) |
 
-◉ ESP32-S3 UART Probe
-A wireless UART pentesting tool built on the ESP32-S3-WROOM-1. Connect to target UART ports via WiFi and interact through a real-time web terminal with capture, logic analysis, and credential brute-forcing.
+## 📌 Wiring
 
-Chip	ESP32-S3 (QFN56) rev v0.2 — Dual-core 240 MHz
-Flash	16 MB
-PSRAM	8 MB Octal (capture buffer)
-WiFi	2.4 GHz 802.11 b/g/n
-USB Bridge	CH343 (programming & debug)
-📌 Pin Wiring Guide
-Connect these ESP32-S3 pins to your target device. All pins are 3.3 V logic — use a level shifter for 5 V targets.
+Connect to your target's UART. Everything runs on 3.3V logic—use a level shifter if the target is 5V.
 
-Function	ESP32 GPIO	Board Pin	Connect To
-UART TX	GPIO 17	Left side	Target RX
-UART RX	GPIO 18	Left side	Target TX
-Reset	GPIO 16	Left side	Target RST / EN
-GND	GND	Both sides	Target GND
-3.3V Out	3V3	Top-left	Target VCC (if needed)
-⚠ TX/RX are crossed: Probe TX → Target RX, Probe RX ← Target TX. GND must always be shared.
+| Function | ESP32 GPIO | Board Pin | → Target |
+|----------|-----------|-----------|----------|
+| TX | GPIO 17 | Left side | RX |
+| RX | GPIO 18 | Left side | TX |
+| RST | GPIO 16 | Left side | RST / EN |
+| GND | GND | Both sides | GND |
+| 3.3V Out | 3V3 | Top-left | VCC (optional) |
 
-🔍 Logic Analyzer Pins
-Up to 4 channels. Any free GPIO can be used. Suggested GPIOs: 4, 5, 6, 7 (left side, near top). Resolution: 25 ns (40 MHz RMT sampling).
+**Remember:** TX and RX are crossed. GND must be shared or nothing works.
 
-⛔ Restricted GPIOs (do NOT use): 26–34 (reserved for flash/PSRAM).
+## 🔍 Logic Analyzer (WIP)
 
-🚀 Quick Start
-Wire GND, TX (GPIO 17), and RX (GPIO 18) to target.
-Power on the probe. It creates WiFi AP: UART-PROBE (password: uartprobe).
-Connect to the AP and open http://192.168.4.1 in your browser.
-The Terminal tab shows live UART data via WebSocket.
-Adjust baud rate in UART Config if needed, or use Auto-Detect Baud.
-Use Reset Target to trigger boot output, then Boot Capture in Pentest to log it.
-⚙ Feature Guide
-Terminal	Real-time UART data over WebSocket. Type commands and send with Enter, CR, LF, or CRLF. Toggle hex view for binary protocols.
-UART Config	Hot-swap baud rate, data bits, parity, stop bits, and mode (Active TX+RX or Sniff RX-only). Auto-Detect Baud measures signal edges to guess the correct rate.
-Capture	7 MB ring buffer in PSRAM stores all UART traffic with timestamps. Download as binary for offline analysis.
-Logic Analyzer	Capture digital signals on up to 4 GPIO channels using the RMT peripheral at 40 MHz. Useful for verifying wiring and protocol timing.
-Pentest	Boot Capture: Reset + capture boot log. Shell Detection: Scan buffer for known prompts. Brute-Force: Try 2500+ default credentials against login prompts.
-Files	Upload/download files to the on-board SPIFFS partition (12 MB). Store custom wordlists or captured data.
-System	Live stats, WiFi STA config (connect to existing network for internet access while keeping AP), and reboot.
-📡 API Endpoints
-All endpoints return JSON. POST bodies are JSON. WebSocket at /ws for streaming.
+Up to 4 channels on any free GPIO. Suggested: 4, 5, 6, 7 (left side, near top). Resolution is 25 ns (40 MHz RMT sampling).
 
-Method	Path	Description
-GET	/api/status	Device status (uptime, WiFi, UART, capture)
-GET/POST	/api/uart/config	Get or set UART parameters
-POST	/api/uart/send	Send data (text or hex)
-POST	/api/uart/break	Send UART break signal
-POST	/api/gpio/reset	Pulse target reset pin
-POST	/api/gpio/set	Set any GPIO direction & level
-POST	/api/autobaud/start	Start auto-baud scan
-GET	/api/autobaud/result	Get scan results
-GET	/api/capture/stats	Capture buffer statistics
-GET	/api/capture/download	Download raw capture data
-POST	/api/capture/clear	Clear capture buffer
-POST	/api/logic/start	Start logic analyzer
-POST	/api/logic/stop	Stop logic analyzer
-POST	/api/pentest/boot-capture	Reset + capture boot output
-POST	/api/pentest/brute	Start credential brute-force
-GET	/api/pentest/brute/status	Brute-force progress
-GET	/api/files/list	List SPIFFS files
-POST	/api/files/upload?name=X	Upload file
-GET	/api/files/download?name=X	Download file
-DELETE	/api/files/delete?name=X	Delete file
-POST	/api/wifi/config	Set STA credentials
-GET	/api/wifi/status	WiFi status
-POST	/api/system/reboot	Reboot device
-WS	/ws	WebSocket (binary frames = UART RX)
+⛔ **Don't use GPIOs 26–34** — they're tied to flash and PSRAM.
+
+## 🚀 Quick Start
+
+1. Wire up GND, TX (GPIO 17), and RX (GPIO 18) to your target
+2. Power on the probe—it'll broadcast a WiFi AP named `UART-PROBE` (password: `uartprobe`)
+3. Connect to it, open http://192.168.4.1
+4. Terminal tab shows live UART data. Adjust baud rate or use Auto-Detect
+5. For boot logs, hit "Reset Target" then "Boot Capture" in the Pentest tab
+
+## ⚙️ Features
+
+**Terminal** — Real-time UART console over WebSocket. Send text, hex, or raw bytes. Supports CR, LF, CRLF.
+
+**UART Config** — Swap baud rates on the fly, tweak data bits, parity, stop bits. Auto-Detect tries to figure out the speed by measuring signal edges.
+
+**Capture** — 7 MB ring buffer in PSRAM grabs everything with timestamps. Download as binary for offline analysis.
+
+**Logic Analyzer** — Digital signal capture on 4 GPIO channels @ 40 MHz. Still iterating on this one.
+
+**Pentest** — Boot capture (reset + log), shell detection (hunts for common prompts), and 2500+ default credential brute-force.
+
+**Files** — Upload/download custom wordlists or captured data to the on-board SPIFFS (12 MB).
+
+**System** — Status, WiFi config (can stay in AP mode and bridge to another network), reboot.
+
+## 📡 API Endpoints
+
+All responses are JSON. POST bodies are JSON. WebSocket streaming at `/ws`.
+
+| Method | Path | What it does |
+|--------|------|--------------|
+| GET | `/api/status` | Device uptime, WiFi, UART, capture stats |
+| GET/POST | `/api/uart/config` | Get or set UART parameters |
+| POST | `/api/uart/send` | Send text or hex data |
+| POST | `/api/uart/break` | Send UART break signal |
+| POST | `/api/gpio/reset` | Pulse the reset pin |
+| POST | `/api/gpio/set` | Set GPIO direction & level |
+| POST | `/api/autobaud/start` | Start baud rate detection |
+| GET | `/api/autobaud/result` | Get detection results |
+| GET | `/api/capture/stats` | Buffer usage & metadata |
+| GET | `/api/capture/download` | Download raw capture |
+| POST | `/api/capture/clear` | Wipe the buffer |
+| POST | `/api/logic/start` | Start logic analyzer |
+| POST | `/api/logic/stop` | Stop logic analyzer |
+| POST | `/api/pentest/boot-capture` | Reset device + capture boot |
+| POST | `/api/pentest/brute` | Start credential brute-force |
+| GET | `/api/pentest/brute/status` | Check progress |
+| GET | `/api/files/list` | List SPIFFS files |
+| POST | `/api/files/upload?name=X` | Upload file |
+| GET | `/api/files/download?name=X` | Download file |
+| DELETE | `/api/files/delete?name=X` | Delete file |
+| POST | `/api/wifi/config` | Set WiFi STA credentials |
+| GET | `/api/wifi/status` | WiFi status |
+| POST | `/api/system/reboot` | Reboot device |
+| WS | `/ws` | WebSocket for UART RX (binary frames) |
