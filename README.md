@@ -58,6 +58,11 @@ Up to 4 channels on any free GPIO. Suggested: 4, 5, 6, 7 (left side, near top). 
 
 **System** — Status, WiFi config (can stay in AP mode and bridge to another network), reboot.
 
+
+
+<img width="1080" height="1920" alt="image" src="https://github.com/user-attachments/assets/520eb63b-07ff-4034-9fd5-05c9729e8118" />
+
+
 ## 📡 API Endpoints
 
 All responses are JSON. POST bodies are JSON. WebSocket streaming at `/ws`.
